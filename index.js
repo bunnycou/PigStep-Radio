@@ -44,7 +44,7 @@ function startRadio(channel, guild, adapter) {
 
     connection.subscribe(player)
     player.play(createAudioResource("./startup.mp3"))
-    let status = 1;
+    let status = 0;
     player.on(AudioPlayerStatus.Idle, () => {
         if (status < 3) {
             status++;
