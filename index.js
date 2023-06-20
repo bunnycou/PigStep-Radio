@@ -8,7 +8,7 @@ const secret = require("./secret.json");
 client.on(Events.ClientReady, c => {
     console.log(`${client.user.tag} is ready!`);
     c.user.setActivity({
-        name: "!psr start|stop",
+        name: "!psr start",
         type: ActivityType.Playing,
     });
 });
@@ -25,6 +25,10 @@ client.on(Events.MessageCreate, async (message) => {
             console.log("Type: Stop")
             const connection = getVoiceConnection(message.guildId);
             connection.destroy();
+            c.user.setActivity({
+                name: "!psr start",
+                type: ActivityType.Playing,
+            });
         }
     }
 });
@@ -46,6 +50,9 @@ function startRadio(channel, guild, adapter) {
     player.play(createAudioResource("./startup.mp3"))
     let status = 0;
     player.on(AudioPlayerStatus.Idle, () => {
+        // if (connection.listenerCount() == 0) {
+        //     connection.destroy();
+        // }
         if (status < 3) {
             status++;
             playFromFolder("./songs", player)
@@ -59,6 +66,18 @@ function startRadio(channel, guild, adapter) {
 function playFromFolder(folder, player) {
     let files = fs.readdirSync(folder);
     let file = files[Math.floor(Math.random() * files.length)]
+    if (folder == "./songs") {
+        client.user.setActivity({
+            name: file,
+            type: ActivityType.Playing,
+        });
+    } else {
+        client.user.setActivity({
+            name: "!psr stop",
+            type: ActivityType.Playing,
+        });
+    }
+    
     console.log(`Playing ${file}`)
     player.play(createAudioResource(`${folder}/${file}`))
 }
