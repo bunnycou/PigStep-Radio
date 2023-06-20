@@ -68,7 +68,7 @@ function playFromFolder(folder, player) {
     let file = files[Math.floor(Math.random() * files.length)]
     if (folder == "./songs") {
         client.user.setActivity({
-            name: file,
+            name: file.substring(0, file.length-4),
             type: ActivityType.Playing,
         });
     } else {
