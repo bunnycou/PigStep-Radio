@@ -1,5 +1,5 @@
 const { Client, Events, GatewayIntentBits, ActivityType } = require('discord.js');
-const { joinVoiceChannel, getVoiceConnection, createAudioResource, createAudioPlayer, AudioPlayerStatus, NoSubscriberBehavior } = require('@discordjs/voice');
+const { joinVoiceChannel, getVoiceConnection, createAudioResource, createAudioPlayer, AudioPlayerStatus, NoSubscriberBehavior, VoiceConnectionStatus } = require('@discordjs/voice');
 const client = new Client({ intents: [GatewayIntentBits.MessageContent, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 const fs = require('fs');
 
@@ -14,24 +14,38 @@ client.on(Events.ClientReady, c => {
 });
 
 client.on(Events.MessageCreate, async (message) => {
-    if (message.content.startsWith("!psr")) {
-        console.log("Command Executed")
+    if (message.content.startsWith(secret.prefix)) {
+        console.log("Command Executed");
         let arg = message.content.toLowerCase().split(" ")[1];
         if (arg == "start") {
             console.log("Type: Start");
             startRadio(message.member.voice.channelId, message.guildId, message.guild.voiceAdapterCreator)
 
         } else if (arg == "stop") {
-            console.log("Type: Stop")
+            console.log("Type: Stop");
             const connection = getVoiceConnection(message.guildId);
             connection.destroy();
-            c.user.setActivity({
+            client.user.setActivity({
                 name: "!psr start",
                 type: ActivityType.Playing,
             });
         }
     }
 });
+
+client.on(Events.VoiceStateUpdate, async (oldVS, newVS) => {
+    if (oldVS.channelId == null) return;
+    const id = oldVS.user;
+    if (id == secret.id) return;
+    const members = await oldVS.channel.members.size;
+    if (members <= 1) {
+        const connection = getVoiceConnection(oldVS.guild.id);
+        if (connection != null) {
+            connection.destroy();
+            console.log(`left empty channel (${oldVS.channel.name})`);
+        }
+    }
+})
 
 function startRadio(channel, guild, adapter) {
     const player = createAudioPlayer({
@@ -46,19 +60,20 @@ function startRadio(channel, guild, adapter) {
         adapterCreator: adapter,
     });
 
-    connection.subscribe(player)
-    player.play(createAudioResource("./startup.mp3"))
+    connection.on(VoiceConnectionStatus.Destroyed, (e) => {
+        player.stop();
+    });
+
+    connection.subscribe(player);
+    player.play(createAudioResource("./startup.mp3"));
     let status = 0;
     player.on(AudioPlayerStatus.Idle, () => {
-        // if (connection.listenerCount() == 0) {
-        //     connection.destroy();
-        // }
         if (status < 3) {
             status++;
-            playFromFolder("./songs", player)
+            playFromFolder("./songs", player);
         } else {
             status = 0;
-            playFromFolder("./bumpers", player)
+            playFromFolder("./bumpers", player);
         }
     });
 }
@@ -78,8 +93,8 @@ function playFromFolder(folder, player) {
         });
     }
     
-    console.log(`Playing ${file}`)
-    player.play(createAudioResource(`${folder}/${file}`))
+    console.log(`Playing ${file}`);
+    player.play(createAudioResource(`${folder}/${file}`));
 }
 
 client.login(secret.token);
