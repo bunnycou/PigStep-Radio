@@ -24,25 +24,23 @@ client.on(Events.MessageCreate, async (message) => {
         } else if (arg == "stop") {
             console.log("Type: Stop");
             const connection = getVoiceConnection(message.guildId);
-            connection.destroy();
-            client.user.setActivity({
-                name: "!psr start",
-                type: ActivityType.Playing,
-            });
+            if (connection != null) connection.destroy();
+            setCusActivity("!psr start")
         }
     }
 });
 
 client.on(Events.VoiceStateUpdate, async (oldVS, newVS) => {
-    if (oldVS.channelId == null) return;
+    if (oldVS.channelId == null) return; // joined vc
     const id = oldVS.user;
-    if (id == secret.id) return;
+    if (id == secret.id) return; // self update
     const members = await oldVS.channel.members.size;
-    if (members <= 1) {
+    if (members <= 1) { // only bot in channel (or noone? if that somehow happens?)
         const connection = getVoiceConnection(oldVS.guild.id);
         if (connection != null) {
             connection.destroy();
-            console.log(`left empty channel (${oldVS.channel.name})`);
+            setCusActivity("!psr start")
+            console.log(`left empty channel: (${oldVS.channel.name})`);
         }
     }
 })
@@ -82,19 +80,20 @@ function playFromFolder(folder, player) {
     let files = fs.readdirSync(folder);
     let file = files[Math.floor(Math.random() * files.length)]
     if (folder == "./songs") {
-        client.user.setActivity({
-            name: file.substring(0, file.length-4),
-            type: ActivityType.Playing,
-        });
+        setCusActivity(file.substring(0, file.length-4))
     } else {
-        client.user.setActivity({
-            name: "!psr stop",
-            type: ActivityType.Playing,
-        });
+        setCusActivity("!psr stop")
     }
     
     console.log(`Playing ${file}`);
     player.play(createAudioResource(`${folder}/${file}`));
+}
+
+function setCusActivity(status) {
+    client.user.setActivity({
+        name: status,
+        type: ActivityType.Playing,
+    });
 }
 
 client.login(secret.token);
