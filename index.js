@@ -5,10 +5,13 @@ const fs = require('fs');
 
 const secret = require("./secret.json");
 
+const startstatus = secret.prefix + " start";
+const stopstatus = secret.prefix + " stop";
+
 client.on(Events.ClientReady, c => {
     console.log(`${client.user.tag} is ready!`);
     c.user.setActivity({
-        name: "!psr start",
+        name: startstatus,
         type: ActivityType.Playing,
     });
 });
@@ -25,7 +28,7 @@ client.on(Events.MessageCreate, async (message) => {
             console.log("Type: Stop");
             const connection = getVoiceConnection(message.guildId);
             if (connection != null) connection.destroy();
-            setCusActivity("!psr start")
+            setCusActivity(startstatus)
         }
     }
 });
@@ -39,7 +42,7 @@ client.on(Events.VoiceStateUpdate, async (oldVS, newVS) => {
         const connection = getVoiceConnection(oldVS.guild.id);
         if (connection != null) {
             connection.destroy();
-            setCusActivity("!psr start")
+            setCusActivity(startstatus)
             console.log(`left empty channel: (${oldVS.channel.name})`);
         }
     }
@@ -65,15 +68,54 @@ function startRadio(channel, guild, adapter) {
     connection.subscribe(player);
     player.play(createAudioResource("./startup.mp3"));
     let status = 0;
+    let songorder = songFolderListRandom();
+    let songnum = 0;
     player.on(AudioPlayerStatus.Idle, () => {
         if (status < 3) {
             status++;
-            playFromFolder("./songs", player);
+            playSong(songorder[songnum++], player)
+            if (songnum == songorder.length) {
+                songnum = 0;
+                songorder = songFolderListRandom();
+            }
         } else {
             status = 0;
             playFromFolder("./bumpers", player);
         }
     });
+}
+
+function randomnum(max) {
+    return Math.floor(Math.random() * max);
+}
+
+function songFolderListRandom() {
+    let files = fs.readdirSync("./songs");
+    let newfiles = Array(files.length);
+    let i = 0;
+    while (files.length != 0) {
+        let r = randomnum(files.length)
+        newfiles[i++] = files[r]
+        files = removefromArray(files, r)
+    }
+    return newfiles;
+}
+
+function removefromArray(array, index) {
+    let newarr = Array(array.length-1)
+    let j = 0;
+    for (let i = 0; i < array.length; i++) {
+        if (i != index) {
+            newarr[j++] = array[i];
+        }
+    }
+    return newarr;
+}
+
+function playSong(song, player) {
+    setCusActivity(song.substring(0, song.length-4))
+    console.log(`Playing ${song}`)
+    player.play(createAudioResource(`songs/${song}`))
 }
 
 function playFromFolder(folder, player) {
@@ -82,7 +124,7 @@ function playFromFolder(folder, player) {
     if (folder == "./songs") {
         setCusActivity(file.substring(0, file.length-4))
     } else {
-        setCusActivity("!psr stop")
+        setCusActivity(stopstatus)
     }
     
     console.log(`Playing ${file}`);
